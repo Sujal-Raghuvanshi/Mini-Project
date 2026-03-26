@@ -40,7 +40,3 @@ coverage/
 temp/
 tmp/
 backups/
-
-# Antigravity
-.antigravity/
-.agent/
