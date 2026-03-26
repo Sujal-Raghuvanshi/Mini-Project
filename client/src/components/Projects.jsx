@@ -11,6 +11,7 @@ function Projects({ tenantId }) {
     const [selectedProject, setSelectedProject] = useState(null)
     const [activeProject, setActiveProject] = useState(null) // For Kanban view
     const [isEditing, setIsEditing] = useState(false)
+    const [confirmDelete, setConfirmDelete] = useState(false)
     const [error, setError] = useState(null)
     const [newProject, setNewProject] = useState({
         name: '',
@@ -119,17 +120,15 @@ function Projects({ tenantId }) {
     }
 
     const handleDeleteProject = async (project) => {
-        if (!window.confirm(`Are you sure you want to delete "${project.name}"? This action cannot be undone.`)) {
-            return
-        }
-
         try {
             await api.projects.delete(project._id)
-            alert('Project deleted successfully')
+            setConfirmDelete(false)
             setShowDetailsModal(false)
+            setSelectedProject(null)
             fetchProjects()
         } catch (error) {
             console.error('Error deleting project:', error)
+            setConfirmDelete(false)
             alert(`Failed to delete project: ${error.message}`)
         }
     }
@@ -418,7 +417,7 @@ function Projects({ tenantId }) {
 
             {/* Project Details Modal */}
             {showDetailsModal && selectedProject && (
-                <div className="modal-overlay" onClick={() => setShowDetailsModal(false)}>
+                <div className="modal-overlay" onClick={() => { setShowDetailsModal(false); setConfirmDelete(false) }}>
                     <div className="modal-content details-modal" onClick={(e) => e.stopPropagation()}>
                         {/* ... existing details modal content ... */}
                         <div className="modal-header">
@@ -499,20 +498,51 @@ function Projects({ tenantId }) {
                                 </div>
                             </div>
 
-                            <div className="detail-actions">
-                                <button className="create-btn" onClick={() => handleOpenProjectBoard(selectedProject)} style={{ flex: 2, justifyContent: 'center' }}>
-                                    <span className="btn-icon">📊</span>
-                                    Open Resource Console
-                                </button>
-                                <button className="btn-edit" onClick={() => handleEditProject(selectedProject)}>
-                                    <span className="btn-icon">✏️</span>
-                                    Edit
-                                </button>
-                                <button className="btn-delete" onClick={() => handleDeleteProject(selectedProject)}>
-                                    <span className="btn-icon">🗑️</span>
-                                    Delete
-                                </button>
-                            </div>
+                            {confirmDelete ? (
+                                <div style={{
+                                    background: 'rgba(255, 59, 48, 0.12)',
+                                    border: '1px solid rgba(255, 59, 48, 0.5)',
+                                    borderRadius: '10px',
+                                    padding: '1rem 1.25rem',
+                                    marginTop: '1rem'
+                                }}>
+                                    <p style={{ margin: '0 0 0.75rem', color: '#ff6b6b', fontWeight: 500 }}>
+                                        ⚠️ Are you sure? This will permanently delete <strong>"{selectedProject.name}"</strong> and all its tasks.
+                                    </p>
+                                    <div style={{ display: 'flex', gap: '0.75rem' }}>
+                                        <button
+                                            className="btn-cancel"
+                                            onClick={() => setConfirmDelete(false)}
+                                            style={{ flex: 1 }}
+                                        >
+                                            Cancel
+                                        </button>
+                                        <button
+                                            className="btn-delete"
+                                            onClick={() => handleDeleteProject(selectedProject)}
+                                            style={{ flex: 1, background: 'rgba(255,59,48,0.8)' }}
+                                        >
+                                            <span className="btn-icon">🗑️</span>
+                                            Yes, Delete
+                                        </button>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="detail-actions">
+                                    <button className="create-btn" onClick={() => handleOpenProjectBoard(selectedProject)} style={{ flex: 2, justifyContent: 'center' }}>
+                                        <span className="btn-icon">📊</span>
+                                        Open Resource Console
+                                    </button>
+                                    <button className="btn-edit" onClick={() => handleEditProject(selectedProject)}>
+                                        <span className="btn-icon">✏️</span>
+                                        Edit
+                                    </button>
+                                    <button className="btn-delete" onClick={() => setConfirmDelete(true)}>
+                                        <span className="btn-icon">🗑️</span>
+                                        Delete
+                                    </button>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>

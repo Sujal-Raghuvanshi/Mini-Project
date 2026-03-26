@@ -16,12 +16,16 @@ function createRedisClient() {
         password: process.env.REDIS_PASSWORD || undefined,
         db: parseInt(process.env.REDIS_DB || '0'),
         retryStrategy: (times) => {
-            // Keep retrying with an exponential backoff capped at 3 seconds
-            const delay = Math.min(times * 100, 3000);
-            return delay;
+            // Stop retrying after 3 attempts — Redis is optional
+            if (times > 3) {
+                console.warn('⚠ Redis unavailable after 3 attempts — running without Redis (rate limiting disabled).');
+                return null; // Stop retrying
+            }
+            return Math.min(times * 500, 2000);
         },
-        maxRetriesPerRequest: null,
+        maxRetriesPerRequest: 1,
         lazyConnect: true, // Don't connect immediately
+        enableOfflineQueue: false,
     };
 
     redisClient = new Redis(redisConfig);

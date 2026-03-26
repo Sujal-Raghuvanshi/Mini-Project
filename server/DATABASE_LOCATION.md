@@ -16,7 +16,7 @@ Your database is hosted in **MongoDB Atlas** (cloud).
 
 **Connection String:**
 ```
-mongodb+srv://sujal-db:Sujalraghu07@cluster0.ja5afvk.mongodb.net/multi_tenant
+mongodb+srv://<your-username>:<your-password>@<your-cluster-url>/multi_tenant
 ```
 
 ---
@@ -26,10 +26,10 @@ mongodb+srv://sujal-db:Sujalraghu07@cluster0.ja5afvk.mongodb.net/multi_tenant
 ### **Cluster Information:**
 ```
 Cluster Name:    Cluster0
-Hostname:        cluster0.ja5afvk.mongodb.net
+Hostname:        <your-cluster-url>
 Database Name:   multi_tenant
-Username:        sujal-db
-Password:        Sujalraghu07
+Username:        <your-username>
+Password:        <your-password>
 ```
 
 ### **Connection Type:**
@@ -50,7 +50,7 @@ Access:          Internet connection required
 
 **Line 6:**
 ```env
-MONGODB_URI=mongodb+srv://sujal-db:Sujalraghu07@cluster0.ja5afvk.mongodb.net/multi_tenant?retryWrites=true&w=majority&appName=Cluster0
+MONGODB_URI=mongodb+srv://<your-username>:<your-password>@<your-cluster-url>/multi_tenant?retryWrites=true&w=majority&appName=Cluster0
 ```
 
 ---
@@ -120,7 +120,7 @@ https://www.mongodb.com/try/download/compass
 
 **3. Connect with your connection string:**
 ```
-mongodb+srv://sujal-db:Sujalraghu07@cluster0.ja5afvk.mongodb.net/multi_tenant
+mongodb+srv://<your-username>:<your-password>@<your-cluster-url>/multi_tenant
 ```
 
 **4. Click "Connect"**
@@ -143,7 +143,7 @@ https://www.mongodb.com/try/download/shell
 
 **2. Connect:**
 ```bash
-mongosh "mongodb+srv://sujal-db:Sujalraghu07@cluster0.ja5afvk.mongodb.net/multi_tenant"
+mongosh "mongodb+srv://<your-username>:<your-password>@<your-cluster-url>/multi_tenant"
 ```
 
 **3. Run commands:**
@@ -181,7 +181,7 @@ mongoose.connect(process.env.MONGODB_URI)
 
 **Connection string from `.env`:**
 ```env
-MONGODB_URI=mongodb+srv://sujal-db:Sujalraghu07@cluster0.ja5afvk.mongodb.net/multi_tenant
+MONGODB_URI=mongodb+srv://<your-username>:<your-password>@<your-cluster-url>/multi_tenant
 ```
 
 ---
@@ -203,7 +203,7 @@ http://localhost:3000/health/detailed
     "mongodb": {
       "status": "healthy",
       "state": "connected",
-      "host": "cluster0.ja5afvk.mongodb.net",
+      "host": "<your-cluster-url>",
       "name": "multi_tenant"
     }
   }
@@ -213,7 +213,7 @@ http://localhost:3000/health/detailed
 **2. Backend Logs:**
 ```
 ✓ MongoDB connected successfully
-✓ Connected to: cluster0.ja5afvk.mongodb.net
+✓ Connected to: <your-cluster-url>
 ✓ Database: multi_tenant
 ```
 
@@ -228,7 +228,7 @@ Backend API (localhost:3000)
     ↓
 MongoDB Atlas (cloud)
     ↓
-Cluster: cluster0.ja5afvk.mongodb.net
+Cluster: <your-cluster-url>
     ↓
 Database: multi_tenant
     ↓
@@ -262,15 +262,15 @@ Collections: projects, users, auditlogs
 
 **From `.env` file:**
 ```env
-MONGODB_URI=mongodb+srv://sujal-db:Sujalraghu07@cluster0.ja5afvk.mongodb.net/multi_tenant?retryWrites=true&w=majority&appName=Cluster0
+MONGODB_URI=mongodb+srv://<your-username>:<your-password>@<your-cluster-url>/multi_tenant?retryWrites=true&w=majority&appName=Cluster0
 ```
 
 **Breakdown:**
 ```
 Protocol:    mongodb+srv://
-Username:    sujal-db
-Password:    Sujalraghu07
-Host:        cluster0.ja5afvk.mongodb.net
+Username:    <your-username>
+Password:    <your-password>
+Host:        <your-cluster-url>
 Database:    multi_tenant
 Options:     retryWrites=true&w=majority&appName=Cluster0
 ```
@@ -300,7 +300,7 @@ Options:     retryWrites=true&w=majority&appName=Cluster0
 ### **Database Location:**
 ```
 Cloud: MongoDB Atlas
-Cluster: cluster0.ja5afvk.mongodb.net
+Cluster: <your-cluster-url>
 Database: multi_tenant
 ```
 
@@ -312,7 +312,7 @@ Database: multi_tenant
 
 ### **Connection String:**
 ```
-mongodb+srv://sujal-db:Sujalraghu07@cluster0.ja5afvk.mongodb.net/multi_tenant
+mongodb+srv://<your-username>:<your-password>@<your-cluster-url>/multi_tenant
 ```
 
 ### **Collections:**
@@ -353,9 +353,9 @@ multi_tenant
 |----------|-------|
 | **Type** | MongoDB Atlas (Cloud) |
 | **Cluster** | Cluster0 |
-| **Host** | cluster0.ja5afvk.mongodb.net |
+| **Host** | <your-cluster-url> |
 | **Database** | multi_tenant |
-| **Username** | sujal-db |
+| **Username** | <your-username> |
 | **Location** | Cloud (MongoDB servers) |
 | **Access** | Internet connection |
 | **Backup** | Automatic |
@@ -376,7 +376,7 @@ multi_tenant
 
 ### **Connection string?**
 ```
-mongodb+srv://sujal-db:Sujalraghu07@cluster0.ja5afvk.mongodb.net/multi_tenant
+mongodb+srv://<your-username>:<your-password>@<your-cluster-url>/multi_tenant
 ```
 
 ### **Database name?**

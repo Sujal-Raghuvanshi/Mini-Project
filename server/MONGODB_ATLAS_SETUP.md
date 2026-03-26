@@ -15,7 +15,7 @@ Your application now uses **MongoDB Atlas** (cloud database) instead of local Mo
 
 **Connection String:**
 ```
-mongodb+srv://sujal-db:Sujalraghu07@cluster0.ja5afvk.mongodb.net/multi_tenant?retryWrites=true&w=majority&appName=Cluster0
+mongodb+srv://<your-username>:<your-password>@<your-cluster-url>/multi_tenant?retryWrites=true&w=majority&appName=Cluster0
 ```
 
 ---
@@ -57,7 +57,7 @@ MONGODB_URI=mongodb://localhost:27017/multi_tenant
 
 ### **After (MongoDB Atlas):**
 ```env
-MONGODB_URI=mongodb+srv://sujal-db:Sujalraghu07@cluster0.ja5afvk.mongodb.net/multi_tenant?retryWrites=true&w=majority&appName=Cluster0
+MONGODB_URI=mongodb+srv://<your-username>:<your-password>@<your-cluster-url>/multi_tenant?retryWrites=true&w=majority&appName=Cluster0
 ```
 **Benefits:**
 - No local installation
@@ -83,7 +83,7 @@ npm run dev
 **You should see:**
 ```
 ✓ MongoDB connected successfully
-✓ Connected to: cluster0.ja5afvk.mongodb.net
+✓ Connected to: <your-cluster-url>
 ✓ Database: multi_tenant
 ```
 
@@ -104,7 +104,7 @@ http://localhost:3000/health/detailed
     "mongodb": {
       "status": "healthy",
       "state": "connected",
-      "host": "cluster0.ja5afvk.mongodb.net",
+      "host": "<your-cluster-url>",
       "name": "multi_tenant"
     }
   }
@@ -153,8 +153,8 @@ http://localhost:5173
 
 Your MongoDB Atlas credentials are now in `.env` file:
 ```
-Username: sujal-db
-Password: Sujalraghu07
+Username: <your-username>
+Password: <your-password>
 ```
 
 **Security Recommendations:**
@@ -179,14 +179,14 @@ Password: Sujalraghu07
 ## 📊 **Connection String Breakdown**
 
 ```
-mongodb+srv://sujal-db:Sujalraghu07@cluster0.ja5afvk.mongodb.net/multi_tenant?retryWrites=true&w=majority&appName=Cluster0
+mongodb+srv://<your-username>:<your-password>@<your-cluster-url>/multi_tenant?retryWrites=true&w=majority&appName=Cluster0
 ```
 
 **Parts:**
 - `mongodb+srv://` - Protocol (SRV for Atlas)
-- `sujal-db` - Username
-- `Sujalraghu07` - Password
-- `cluster0.ja5afvk.mongodb.net` - Cluster hostname
+- `<your-username>` - Username
+- `<your-password>` - Password
+- `<your-cluster-url>` - Cluster hostname
 - `multi_tenant` - Database name
 - `retryWrites=true` - Auto-retry failed writes
 - `w=majority` - Write concern (wait for majority)
@@ -202,7 +202,7 @@ mongodb+srv://sujal-db:Sujalraghu07@cluster0.ja5afvk.mongodb.net/multi_tenant?re
 
 **Fix:**
 1. Check MongoDB Atlas dashboard
-2. Verify username: `sujal-db`
+2. Verify username: `<your-username>`
 3. Reset password if needed
 4. Update `.env` file
 

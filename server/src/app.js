@@ -163,18 +163,21 @@ const connectDB = async () => {
         await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/multi_tenant');
         console.log('✓ MongoDB connected');
     } catch (error) {
-        console.error('✗ MongoDB connection error:', error);
-        process.exit(1);
+        console.error('✗ MongoDB connection error:', error.message);
+        console.warn('⚠ Server will continue without MongoDB — most API routes will fail until DB is reachable.');
+        console.warn('  → Fix: Whitelist your IP in MongoDB Atlas: https://cloud.mongodb.com → Network Access');
+        // Do NOT exit — keep server alive so client can still load
     }
 };
 
-// Initialize Redis connection
+// Initialize Redis connection (ioredis auto-connects — no manual .connect() needed)
 const initRedis = async () => {
     try {
         const client = createRedisClient();
-        await client.connect();
-        const host = client.options.host || 'unknown';
-        const port = client.options.port || 'unknown';
+        // ioredis connects lazily; ping to verify connectivity
+        await client.ping();
+        const host = client.options?.host || '127.0.0.1';
+        const port = client.options?.port || 6379;
         console.log(`✓ Redis client initialized (${host}:${port})`);
     } catch (error) {
         console.warn('⚠ Redis connection failed (rate limiting will be disabled):', error.message);
@@ -216,7 +219,7 @@ const startServer = async () => {
                 if (!adminExists) {
                     await Model.create({
                         username: 'admin',
-                        password: 'admin123',
+                        password: process.env.ADMIN_PASSWORD || 'admin123',
                         role: 'admin',
                         tenant_id: tenantId
                     });
