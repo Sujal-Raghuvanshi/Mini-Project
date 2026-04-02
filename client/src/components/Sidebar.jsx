@@ -1,12 +1,13 @@
 import './Sidebar.css'
 
-function Sidebar({ currentView, setCurrentView, tenantId, userId, onLogout, onTenantSwitch }) {
+function Sidebar({ currentView, setCurrentView, tenantId, userId, userRole, onLogout, onTenantSwitch }) {
     const menuItems = [
         { id: 'dashboard', icon: '📊', label: 'Dashboard' },
         { id: 'projects', icon: '🛡️', label: 'Workspaces' },
         { id: 'audit', icon: '📋', label: 'Audit Logs' },
         { id: 'monitoring', icon: '📈', label: 'Monitoring' },
         { id: 'settings', icon: '⚙️', label: 'Settings' },
+        ...(userRole === 'superadmin' ? [{ id: 'admin', icon: '🔮', label: 'Superadmin' }] : []),
     ]
 
     return (

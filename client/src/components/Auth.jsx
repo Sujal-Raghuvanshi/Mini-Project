@@ -42,6 +42,7 @@ function Auth({ onAuthenticated }) {
             if (!isLogin) {
                 // If it's a new signup, we need to register the tenant/user first
                 await api.auth.register({
+                    organizationName: newTenant,
                     tenantId: finalTenantId,
                     userId: finalUserId,
                     password: finalPassword
@@ -54,7 +55,12 @@ function Auth({ onAuthenticated }) {
             // Now log in (for both fresh signups and returning users)
             const response = await api.auth.generateToken(finalTenantId, finalUserId, finalPassword)
             api.setAuthToken(response.token)
-            onAuthenticated({ tenantId: finalTenantId, userId: finalUserId, token: response.token })
+            onAuthenticated({
+                tenantId: finalTenantId,
+                userId: finalUserId,
+                role: response.user?.role || 'admin',
+                token: response.token
+            })
         } catch (err) {
             setError(err.message || 'Authentication failed')
             // If user already exists, let's be helpful and switch them to the login tab
@@ -171,7 +177,7 @@ function Auth({ onAuthenticated }) {
                                                 }
                                             }}
                                         >
-                                            {isCustomLogin ? 'Switch to Demo' : 'Use Custom ID'}
+                                            {isCustomLogin ? 'Use Dropdown' : 'Use Custom ID'}
                                         </button>
                                     </div>
 
@@ -214,6 +220,7 @@ function Auth({ onAuthenticated }) {
                                                 <option value="tenant-a">Tenant A (Demo)</option>
                                                 <option value="tenant-b">Tenant B (Demo)</option>
                                                 <option value="tenant-c">Tenant C (Demo)</option>
+                                                <option value="system">🔮 System (Superadmin)</option>
                                             </select>
                                         </div>
                                     )}

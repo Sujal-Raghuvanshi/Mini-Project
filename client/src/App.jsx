@@ -7,6 +7,7 @@ import AuditLogs from './components/AuditLogs'
 import Monitoring from './components/Monitoring'
 import Sidebar from './components/Sidebar'
 import Settings from './components/Settings'
+import AdminDashboard from './components/AdminDashboard'
 import api from './services/api'
 
 function App() {
@@ -14,6 +15,7 @@ function App() {
   const [currentView, setCurrentView] = useState('dashboard')
   const [tenantId, setTenantId] = useState('tenant-a')
   const [userId, setUserId] = useState('admin')
+  const [userRole, setUserRole] = useState('admin')
   const [sessionStartTime, setSessionStartTime] = useState(null)
 
   useEffect(() => {
@@ -22,10 +24,12 @@ function App() {
     if (token) {
       const savedTenantId = localStorage.getItem('tenantId')
       const savedUserId = localStorage.getItem('userId')
+      const savedRole = localStorage.getItem('userRole')
       const savedStartTime = localStorage.getItem('sessionStartTime')
 
       if (savedTenantId) setTenantId(savedTenantId)
       if (savedUserId) setUserId(savedUserId)
+      if (savedRole) setUserRole(savedRole)
       if (savedStartTime) setSessionStartTime(parseInt(savedStartTime))
       else setSessionStartTime(Date.now())
 
@@ -33,15 +37,17 @@ function App() {
     }
   }, [])
 
-  const handleAuthenticated = ({ tenantId, userId, token }) => {
+  const handleAuthenticated = ({ tenantId, userId, role, token }) => {
     setTenantId(tenantId || 'tenant-a')
     setUserId(userId || 'admin')
+    setUserRole(role || 'admin')
     const startTime = Date.now()
     setSessionStartTime(startTime)
 
     // Persist session details
     localStorage.setItem('tenantId', tenantId || 'tenant-a')
     localStorage.setItem('userId', userId || 'admin')
+    localStorage.setItem('userRole', role || 'admin')
     localStorage.setItem('sessionStartTime', startTime.toString())
 
     setIsAuthenticated(true)
@@ -51,6 +57,7 @@ function App() {
     api.setAuthToken(null)
     localStorage.removeItem('tenantId')
     localStorage.removeItem('userId')
+    localStorage.removeItem('userRole')
     localStorage.removeItem('sessionStartTime')
     setIsAuthenticated(false)
     setSessionStartTime(null)
@@ -81,6 +88,7 @@ function App() {
         setCurrentView={setCurrentView}
         tenantId={tenantId}
         userId={userId}
+        userRole={userRole}
         onLogout={handleLogout}
         onTenantSwitch={handleTenantSwitch}
       />
@@ -98,6 +106,7 @@ function App() {
         {currentView === 'audit' && <AuditLogs tenantId={tenantId} />}
         {currentView === 'monitoring' && <Monitoring tenantId={tenantId} />}
         {currentView === 'settings' && <Settings tenantId={tenantId} onLogout={handleLogout} />}
+        {currentView === 'admin' && <AdminDashboard tenantId={tenantId} />}
       </main>
     </div>
   )

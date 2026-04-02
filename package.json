@@ -25,6 +25,8 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "@playwright/test": "^1.59.1",
+    "@types/node": "^25.5.0",
     "concurrently": "^8.2.2"
   }
 }

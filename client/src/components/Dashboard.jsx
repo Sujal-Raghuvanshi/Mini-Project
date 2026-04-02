@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import './Dashboard.css'
 import api from '../services/api'
+import TierBadge from './TierBadge'
 
 function Dashboard({ tenantId, userId, setCurrentView, onLogout, sessionStartTime }) {
     const [systemStatus, setSystemStatus] = useState('UNKNOWN')
@@ -9,11 +10,12 @@ function Dashboard({ tenantId, userId, setCurrentView, onLogout, sessionStartTim
     const [rateLimit, setRateLimit] = useState({ current: 0, max: 0 })
     const [uptime, setUptime] = useState('0m')
     const [sessionDuration, setSessionDuration] = useState('0m')
+    const [tierInfo, setTierInfo] = useState({ tier: 'free', currentProjects: 0, maxProjects: 3, currentUsers: 0, maxUsers: 5 })
 
     useEffect(() => {
-        // Fetch system status from API
         fetchSystemStatus()
         fetchRateLimit()
+        fetchTierInfo()
         updateSessionDuration()
 
         const interval = setInterval(() => {
@@ -23,6 +25,25 @@ function Dashboard({ tenantId, userId, setCurrentView, onLogout, sessionStartTim
         }, 5000)
         return () => clearInterval(interval)
     }, [sessionStartTime])
+
+    const fetchTierInfo = async () => {
+        try {
+            const [projectsRes, usersRes, rateLimitRes] = await Promise.all([
+                api.projects.getAll(),
+                api.users.getAll(),
+                api.rateLimit.getStatus(),
+            ])
+            setTierInfo({
+                tier: rateLimitRes?.tier || 'free',
+                currentProjects: projectsRes?.count ?? 0,
+                maxProjects: rateLimitRes?.tier === 'enterprise' ? -1 : rateLimitRes?.tier === 'premium' ? 20 : 3,
+                currentUsers: usersRes?.count ?? 0,
+                maxUsers: rateLimitRes?.tier === 'enterprise' ? -1 : rateLimitRes?.tier === 'premium' ? 25 : 5,
+            })
+        } catch (err) {
+            console.log('Tier info fetch failed:', err.message)
+        }
+    }
 
     const fetchSystemStatus = async () => {
         try {
@@ -77,7 +98,16 @@ function Dashboard({ tenantId, userId, setCurrentView, onLogout, sessionStartTim
                     <h1 className="dashboard-title">Welcome back, {userId}!</h1>
                     <p className="dashboard-subtitle">Manage your multi-tenant environment</p>
                 </div>
-                <button className="logout-btn" onClick={onLogout}>Logout</button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                    <TierBadge
+                        tier={tierInfo.tier}
+                        currentProjects={tierInfo.currentProjects}
+                        maxProjects={tierInfo.maxProjects}
+                        currentUsers={tierInfo.currentUsers}
+                        maxUsers={tierInfo.maxUsers}
+                    />
+                    <button className="logout-btn" onClick={onLogout}>Logout</button>
+                </div>
             </div>
 
             <div className="dashboard-section">

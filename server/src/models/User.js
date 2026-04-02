@@ -8,7 +8,7 @@ const userSchema = createTenantSchema({
     },
     role: {
         type: String,
-        enum: ['admin', 'user', 'viewer'],
+        enum: ['admin', 'user', 'viewer', 'superadmin'],
         default: 'user'
     },
     password: { type: String, required: true }

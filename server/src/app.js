@@ -19,7 +19,6 @@ dotenv.config();
 
 const app = express();
 
-// CORS configuration for frontend
 app.use(cors({
     origin: ['http://localhost:5173', 'http://127.0.0.1:5173'],
     credentials: true,
@@ -27,119 +26,52 @@ app.use(cors({
 
 app.use(express.json());
 
-// Metrics middleware - track all requests
+// Database health check middleware
 app.use((req, res, next) => {
-    const startTime = Date.now();
-
-    res.on('finish', () => {
-        const duration = Date.now() - startTime;
-        const tenantId = req.tenantId || 'none';
-
-        MetricsCollector.recordHttpRequest(
-            req.method,
-            req.path,
-            res.statusCode.toString(),
-            tenantId,
-            duration
-        );
-    });
-
+    if (req.path.startsWith('/health') || req.path === '/metrics') {
+        return next();
+    }
+    if (mongoose.connection.readyState !== 1) {
+        return res.status(503).json({ 
+            error: 'Database Connection Error',
+            message: 'The server cannot connect to MongoDB.' 
+        });
+    }
     next();
 });
 
-// Health check and metrics routes (no tenant required)
+// Metrics middleware
+app.use((req, res, next) => {
+    const startTime = Date.now();
+    res.on('finish', () => {
+        const duration = Date.now() - startTime;
+        const tenantId = req.tenantId || 'none';
+        MetricsCollector.recordHttpRequest(req.method, req.path, res.statusCode.toString(), tenantId, duration);
+    });
+    next();
+});
+
+// Public health routes
 app.use('/', healthCheckRouter);
 
-// Public routes (no tenant context)
-app.post('/auth/register', async (req, res) => {
-    try {
-        const { tenantId, userId, password } = req.body;
+// --- NEW PUBLIC ROUTES (Before Isolation/Auth Middleware) ---
+app.use('/auth', require('./routes/auth'));
+app.use('/tenants', require('./routes/tenants'));
 
-        if (!tenantId || !userId || !password) {
-            return res.status(400).json({ error: 'tenantId, userId and password required' });
-        }
-
-        // We run this in the context of the new tenant to ensure the user is created in the right DB
-        await TenantContext.run(tenantId, async () => {
-            const Model = await require('./utils/modelProvider').getModel('User');
-
-            // Check if user already exists
-            const existingUser = await Model.findOne({ username: userId });
-            if (existingUser) {
-                return res.status(409).json({ error: 'User/Organization already exists. Please log in.' });
-            }
-
-            // Create the user (this will trigger umask/isolation checks via hooks)
-            await Model.create({
-                username: userId,
-                password, // In a real app, hash this!
-                role: 'admin',
-                tenant_id: tenantId // Though hooks usually handle this, we set it explicitly here since it's the root user
-            });
-        });
-
-        res.status(201).json({ message: 'Registration successful', tenantId, userId });
-    } catch (error) {
-        console.error('Registration error:', error);
-        res.status(500).json({ error: error.message });
-    }
-});
-
-// Generate JWT token endpoint (Auth Login)
-app.post('/auth/token', async (req, res) => {
-    try {
-        const { tenantId, userId, password } = req.body;
-
-        if (!tenantId || !userId || !password) {
-            return res.status(400).json({ error: 'tenantId, userId and password required' });
-        }
-
-        // Verify user exists in the tenant's database
-        let user;
-        await TenantContext.run(tenantId, async () => {
-            const Model = await require('./utils/modelProvider').getModel('User');
-            user = await Model.findOne({ username: userId });
-        });
-
-        if (!user || user.password !== password) {
-            return res.status(401).json({ error: 'Invalid credentials' });
-        }
-
-        // Create encrypted JWT token
-        const token = TenantResolver.createToken({
-            tenantId,
-            userId,
-            username: user.username,
-            role: user.role
-        }, true);
-
-        res.json({
-            token,
-            expiresIn: process.env.JWT_EXPIRY || '24h',
-            encrypted: true,
-            user: {
-                username: user.username,
-                role: user.role,
-                tenantId: user.tenant_id
-            }
-        });
-    } catch (error) {
-        console.error('Login error:', error);
-        res.status(500).json({ error: error.message });
-    }
-});
+// --- ADMIN ROUTES (superadminGuard handles its own JWT + role check) ---
+app.use('/admin', require('./routes/admin'));
 
 // Apply tenant isolation middleware to all /api routes
-app.use('/api', TenantResolver.fromJWT);  // JWT with encryption support
+app.use('/api', TenantResolver.fromJWT);
 app.use('/api', enforceTenantIsolation);
-app.use('/api', TenantRateLimiter.middleware);  // Rate limiting
-app.use('/api', auditMiddleware);  // Audit logging
+app.use('/api', TenantRateLimiter.middleware);
+app.use('/api', auditMiddleware);
 
 // API Routes
 const apiRouter = require('./routes/api');
 app.use('/api', apiRouter);
 
-// Specific test route to verify route isolation
+// Isolation verification route
 app.get('/api/:tenantId/verify', TenantResolver.fromJWT, enforceRouteIsolation, (req, res) => {
     res.json({ success: true, tenantId: req.tenantId });
 });
@@ -147,56 +79,51 @@ app.get('/api/:tenantId/verify', TenantResolver.fromJWT, enforceRouteIsolation, 
 // Error handling
 app.use((err, req, res, next) => {
     console.error(`[ERROR] Tenant: ${req.tenantId || 'none'}`, err);
-
-    // Record error in metrics
     MetricsCollector.recordError(err.name || 'UnknownError', req.tenantId);
-
-    res.status(500).json({
-        error: 'Internal server error',
-        message: process.env.NODE_ENV === 'development' ? err.message : undefined
-    });
+    res.status(500).json({ error: 'Internal server error', message: process.env.NODE_ENV === 'development' ? err.message : undefined });
 });
 
 // Database connection
 const connectDB = async () => {
     try {
-        await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/multi_tenant');
+        await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/multi_tenant', {
+            serverSelectionTimeoutMS: 5000,
+        });
         console.log('✓ MongoDB connected');
     } catch (error) {
         console.error('✗ MongoDB connection error:', error.message);
-        console.warn('⚠ Server will continue without MongoDB — most API routes will fail until DB is reachable.');
-        console.warn('  → Fix: Whitelist your IP in MongoDB Atlas: https://cloud.mongodb.com → Network Access');
-        // Do NOT exit — keep server alive so client can still load
+        console.warn('⚠ Attempting to start local in-memory MongoDB...');
+        try {
+            const { MongoMemoryServer } = require('mongodb-memory-server');
+            const mongoServer = await MongoMemoryServer.create();
+            const mongoUri = mongoServer.getUri();
+            
+            await mongoose.connect(mongoUri, { dbName: 'multi_tenant' });
+            console.log(`✓ Local In-Memory MongoDB connected at ${mongoUri}`);
+            process.env.MONGODB_URI_BASE = mongoUri.replace(/\/$/, '');
+        } catch (memError) {
+            console.error('✗ Failed to start in-memory MongoDB:', memError.message);
+        }
     }
 };
 
-// Initialize Redis connection (ioredis auto-connects — no manual .connect() needed)
 const initRedis = async () => {
     try {
         const client = createRedisClient();
-        // ioredis connects lazily; ping to verify connectivity
         await client.ping();
         const host = client.options?.host || '127.0.0.1';
         const port = client.options?.port || 6379;
         console.log(`✓ Redis client initialized (${host}:${port})`);
     } catch (error) {
-        console.warn('⚠ Redis connection failed (rate limiting will be disabled):', error.message);
+        console.warn('⚠ Redis connection failed (rate limiting fallback mode active):', error.message);
     }
 };
 
-// Graceful shutdown
 const gracefulShutdown = async () => {
     console.log('\nShutting down gracefully...');
-
-    // Stop backup scheduler
     backupScheduler.stopAll();
-
-    // Close Redis connection
     await closeRedisClient();
-
-    // Close MongoDB connection
     await mongoose.connection.close();
-
     console.log('✓ All connections closed');
     process.exit(0);
 };
@@ -204,66 +131,47 @@ const gracefulShutdown = async () => {
 process.on('SIGTERM', gracefulShutdown);
 process.on('SIGINT', gracefulShutdown);
 
-// Start server
 const startServer = async () => {
     await connectDB();
     await initRedis();
-
+    
     // Seed demo tenants for testing
     const seedDemoTenants = async () => {
-        const demoTenants = ['tenant-a', 'tenant-b'];
+        if (mongoose.connection.readyState !== 1) return;
+        const bcrypt = require('bcryptjs');
+        const demoTenants = ['tenant-a', 'tenant-b', 'tenant-c'];
+
         for (const tenantId of demoTenants) {
             await TenantContext.run(tenantId, async () => {
                 const Model = await require('./utils/modelProvider').getModel('User');
-                const adminExists = await Model.findOne({ username: 'admin' });
-                if (!adminExists) {
-                    await Model.create({
-                        username: 'admin',
-                        password: process.env.ADMIN_PASSWORD || 'admin123',
-                        role: 'admin',
-                        tenant_id: tenantId
-                    });
-                    console.log(`✓ Seeded demo admin for ${tenantId}`);
-                }
+                // Delete first to clear any pre-bcrypt plain-text seeded user
+                await Model.deleteOne({ username: 'admin', tenant_id: tenantId });
+                const hashedPwd = await bcrypt.hash(process.env.ADMIN_PASSWORD || 'admin123', 12);
+                await Model.create({ username: 'admin', password: hashedPwd, role: 'admin', tenant_id: tenantId });
+                console.log(`✓ Seeded demo admin for ${tenantId}`);
             });
         }
+
+        // Seed superadmin in system tenant
+        await TenantContext.run('system', async () => {
+            const Model = await require('./utils/modelProvider').getModel('User');
+            // Delete first to clear any stale/plain-text superadmin
+            await Model.deleteOne({ username: 'superadmin', tenant_id: 'system' });
+            const hashedPwd = await bcrypt.hash(process.env.SUPERADMIN_PASSWORD || 'super123', 12);
+            await Model.create({ username: 'superadmin', password: hashedPwd, role: 'superadmin', tenant_id: 'system' });
+            console.log(`✓ Seeded superadmin user (tenant: system)`);
+        });
     };
     await seedDemoTenants().catch(err => console.error('Seeding failed:', err.message));
 
     const PORT = process.env.PORT || 3000;
     app.listen(PORT, () => {
-        console.log('\n========================================');
-        console.log(`Multi-tenant server running on port ${PORT}`);
-        console.log('========================================');
-        console.log('Security & Isolation layers:');
-        console.log('  ✓ JWT token encryption (AES-256-GCM)');
-        console.log('  ✓ Redis-based rate limiting');
-        console.log('  ✓ Comprehensive audit logging');
-        console.log('  ✓ Prometheus metrics collection');
-        console.log('  ✓ Express middleware isolation');
-        console.log('  ✓ MongoDB tenant_id indexes');
-        console.log('  ✓ AsyncLocalStorage context');
-        console.log('  ✓ Application logic enforcement');
-        console.log('========================================');
-        console.log('Available endpoints:');
-        console.log('  GET  /health - Basic health check');
-        console.log('  GET  /health/detailed - Detailed health');
-        console.log('  GET  /metrics - Prometheus metrics');
-        console.log('  POST /auth/token - Generate JWT token');
-        console.log('  GET  /api/users - List users (tenant-scoped)');
-        console.log('  GET  /api/projects - List projects (tenant-scoped)');
-        console.log('  GET  /api/audit-logs - Query audit logs');
-        console.log('  GET  /api/rate-limit/status - Rate limit status');
-        console.log('========================================\n');
+        console.log(`✓ Multi-tenant server running on port ${PORT}`);
     });
 };
 
 if (require.main === module) {
-    startServer().catch(error => {
-        console.error('Failed to start server:', error);
-        process.exit(1);
-    });
+    startServer().catch(error => { console.error('Failed to start server:', error); process.exit(1); });
 }
 
 module.exports = app;
-

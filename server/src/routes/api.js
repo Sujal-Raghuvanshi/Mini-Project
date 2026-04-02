@@ -6,6 +6,7 @@ const Task = require('../models/Task');
 const { TenantAwareService } = require('../services/tenantAwareService');
 const { AuditLogger } = require('../utils/auditLogger');
 const { TenantRateLimiter } = require('../middleware/rateLimiter');
+const { checkLimit } = require('../middleware/tierGuard');
 
 // Initialize services
 const userService = new TenantAwareService(User);
@@ -22,7 +23,7 @@ router.get('/users', async (req, res) => {
     }
 });
 
-router.post('/users', async (req, res) => {
+router.post('/users', checkLimit('users'), async (req, res) => {
     try {
         const user = await userService.create(req.body);
 
@@ -51,7 +52,7 @@ router.get('/projects', async (req, res) => {
     }
 });
 
-router.post('/projects', async (req, res) => {
+router.post('/projects', checkLimit('projects'), async (req, res) => {
     try {
         const project = await projectService.create(req.body);
 
@@ -120,7 +121,7 @@ router.get('/tasks', async (req, res) => {
     }
 });
 
-router.post('/tasks', async (req, res) => {
+router.post('/tasks', checkLimit('tasks'), async (req, res) => {
     try {
         const task = await taskService.create(req.body);
 

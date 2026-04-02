@@ -13,6 +13,7 @@ function Projects({ tenantId }) {
     const [isEditing, setIsEditing] = useState(false)
     const [confirmDelete, setConfirmDelete] = useState(false)
     const [error, setError] = useState(null)
+    const [tierError, setTierError] = useState(null)  // Tier limit errors
     const [newProject, setNewProject] = useState({
         name: '',
         description: '',
@@ -98,7 +99,22 @@ function Projects({ tenantId }) {
 
         } catch (error) {
             console.error('Error saving project:', error)
-            alert(`Failed to save project: ${error.message}`)
+            // Check if this is a tier limit error (403 from tierGuard)
+            if (error.message && error.message.includes('Tier limit reached')) {
+                // Parse the structured error if possible
+                try {
+                    const parsed = JSON.parse(error.message)
+                    setTierError(parsed.upgradeMessage || error.message)
+                } catch (_) {
+                    setTierError(error.message)
+                }
+                setShowModal(false)
+            } else if (error.upgradeMessage) {
+                setTierError(error.upgradeMessage)
+                setShowModal(false)
+            } else {
+                alert(`Failed to save project: ${error.message}`)
+            }
         }
     }
 
@@ -181,6 +197,33 @@ function Projects({ tenantId }) {
                     Provision Workspace
                 </button>
             </div>
+
+            {/* Tier Limit Error Banner */}
+            {tierError && (
+                <div style={{
+                    backgroundColor: 'rgba(251, 146, 60, 0.1)',
+                    border: '1px solid #fb923c',
+                    color: '#fb923c',
+                    padding: '1rem 1.25rem',
+                    borderRadius: '10px',
+                    marginBottom: '1.5rem',
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: '10px',
+                }}>
+                    <span style={{ fontSize: '1.2rem', flexShrink: 0 }}>🔒</span>
+                    <div>
+                        <div style={{ fontWeight: 700, marginBottom: '2px' }}>Tier Limit Reached</div>
+                        <div style={{ fontSize: '0.875rem', opacity: 0.9 }}>{tierError}</div>
+                    </div>
+                    <button
+                        onClick={() => setTierError(null)}
+                        style={{ marginLeft: 'auto', background: 'transparent', border: 'none', color: '#fb923c', cursor: 'pointer', fontSize: '1rem', padding: '0 4px' }}
+                    >
+                        ✕
+                    </button>
+                </div>
+            )}
 
             {/* Error Message Display */}
             {error && (
