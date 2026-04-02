@@ -6,11 +6,13 @@ import Projects from './components/Projects'
 import AuditLogs from './components/AuditLogs'
 import Monitoring from './components/Monitoring'
 import Sidebar from './components/Sidebar'
+import WebhookManager from './components/WebhookManager'
 import Settings from './components/Settings'
 import AdminDashboard from './components/AdminDashboard'
 import api from './services/api'
 
 function App() {
+  console.log('App mounting...');
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [currentView, setCurrentView] = useState('dashboard')
   const [tenantId, setTenantId] = useState('tenant-a')
@@ -103,6 +105,7 @@ function App() {
           />
         )}
         {currentView === 'projects' && <Projects tenantId={tenantId} />}
+        {currentView === 'webhooks' && <WebhookManager tenantId={tenantId} />}
         {currentView === 'audit' && <AuditLogs tenantId={tenantId} />}
         {currentView === 'monitoring' && <Monitoring tenantId={tenantId} />}
         {currentView === 'settings' && <Settings tenantId={tenantId} onLogout={handleLogout} />}

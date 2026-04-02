@@ -52,3 +52,35 @@ export const updateTenantTier = (tenantId, tier) =>
         method: 'PATCH',
         body: JSON.stringify({ tier }),
     })
+
+// --- WEBHOOKS (Tenant Scoped) ---
+/** GET /api/webhooks - List all for tenant */
+export const getWebhooks = () => adminRequest('/api/webhooks')
+
+/** POST /api/webhooks - Register new */
+export const createWebhook = (data) =>
+    adminRequest('/api/webhooks', {
+        method: 'POST',
+        body: JSON.stringify(data),
+    })
+
+/** DELETE /api/webhooks/:id - Remove */
+export const deleteWebhook = (id) => adminRequest(`/api/webhooks/${id}`, { method: 'DELETE' })
+
+/** PATCH /api/webhooks/:id/toggle - Enable/Disable */
+export const toggleWebhook = (id) => adminRequest(`/api/webhooks/${id}/toggle`, { method: 'PATCH' })
+
+// --- IP ALLOWLISTING (Admin Scoped) ---
+/** GET /admin/tenants/:tenantId/ip-allowlist */
+export const getIpAllowlist = (tenantId) => adminRequest(`/admin/tenants/${tenantId}/ip-allowlist`)
+
+/** POST /admin/tenants/:tenantId/ip-allowlist */
+export const addIpToAllowlist = (tenantId, ip) =>
+    adminRequest(`/admin/tenants/${tenantId}/ip-allowlist`, {
+        method: 'POST',
+        body: JSON.stringify({ ip }),
+    })
+
+/** DELETE /admin/tenants/:tenantId/ip-allowlist/:ip */
+export const removeIpFromAllowlist = (tenantId, ip) =>
+    adminRequest(`/admin/tenants/${tenantId}/ip-allowlist/${ip}`, { method: 'DELETE' })

@@ -57,12 +57,14 @@ app.use('/', healthCheckRouter);
 // --- NEW PUBLIC ROUTES (Before Isolation/Auth Middleware) ---
 app.use('/auth', require('./routes/auth'));
 app.use('/tenants', require('./routes/tenants'));
+app.use('/api', require('./routes/webhooks'));
 
 // --- ADMIN ROUTES (superadminGuard handles its own JWT + role check) ---
 app.use('/admin', require('./routes/admin'));
 
 // Apply tenant isolation middleware to all /api routes
 app.use('/api', TenantResolver.fromJWT);
+app.use('/api', require('./middleware/ipGuard').ipGuard); // NEW: IP Allowlisting
 app.use('/api', enforceTenantIsolation);
 app.use('/api', TenantRateLimiter.middleware);
 app.use('/api', auditMiddleware);
@@ -139,23 +141,42 @@ const startServer = async () => {
     const seedDemoTenants = async () => {
         if (mongoose.connection.readyState !== 1) return;
         const bcrypt = require('bcryptjs');
-        const demoTenants = ['tenant-a', 'tenant-b', 'tenant-c'];
+        const Tenant = require('./models/Tenant');
+        const demoTenants = [
+            { id: 'tenant-a', name: 'Acme Corp (Demo)' },
+            { id: 'tenant-b', name: 'Global Tech (Demo)' },
+            { id: 'tenant-c', name: 'Skyline Inc (Demo)' },
+        ];
 
-        for (const tenantId of demoTenants) {
-            await TenantContext.run(tenantId, async () => {
+        // Seed master Tenant records
+        for (const t of demoTenants) {
+            await Tenant.findOneAndUpdate(
+                { tenantId: t.id },
+                { $setOnInsert: { name: t.name, status: 'active', plan: 'free' } },
+                { upsert: true }
+            );
+
+            await TenantContext.run(t.id, async () => {
                 const Model = await require('./utils/modelProvider').getModel('User');
-                // Delete first to clear any pre-bcrypt plain-text seeded user
-                await Model.deleteOne({ username: 'admin', tenant_id: tenantId });
+                await Model.deleteOne({ username: 'admin', tenant_id: t.id });
                 const hashedPwd = await bcrypt.hash(process.env.ADMIN_PASSWORD || 'admin123', 12);
-                await Model.create({ username: 'admin', password: hashedPwd, role: 'admin', tenant_id: tenantId });
-                console.log(`✓ Seeded demo admin for ${tenantId}`);
+                await Model.create({ username: 'admin', password: hashedPwd, role: 'admin', tenant_id: t.id });
+                console.log(`✓ Seeded demo admin for ${t.id}`);
             });
         }
 
-        // Seed superadmin in system tenant
+        // Seed system tenant and superadmin
+        await Tenant.findOneAndUpdate(
+            { tenantId: 'system' },
+            { 
+              $setOnInsert: { name: 'System Administration', status: 'active' },
+              $set: { plan: 'enterprise' } // FORCE to enterprise regardless of previous state
+            },
+            { upsert: true }
+        );
+
         await TenantContext.run('system', async () => {
             const Model = await require('./utils/modelProvider').getModel('User');
-            // Delete first to clear any stale/plain-text superadmin
             await Model.deleteOne({ username: 'superadmin', tenant_id: 'system' });
             const hashedPwd = await bcrypt.hash(process.env.SUPERADMIN_PASSWORD || 'super123', 12);
             await Model.create({ username: 'superadmin', password: hashedPwd, role: 'superadmin', tenant_id: 'system' });

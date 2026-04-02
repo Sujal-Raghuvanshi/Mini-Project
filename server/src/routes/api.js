@@ -7,6 +7,7 @@ const { TenantAwareService } = require('../services/tenantAwareService');
 const { AuditLogger } = require('../utils/auditLogger');
 const { TenantRateLimiter } = require('../middleware/rateLimiter');
 const { checkLimit } = require('../middleware/tierGuard');
+const { trigger: triggerWebhook } = require('../services/webhookService');
 
 // Initialize services
 const userService = new TenantAwareService(User);
@@ -65,6 +66,9 @@ router.post('/projects', checkLimit('projects'), async (req, res) => {
             req,
         });
 
+        // Trigger Webhook
+        triggerWebhook(req.tenantId, 'project.created', project);
+
         res.status(201).json({ tenant: req.tenantId, data: project });
     } catch (error) {
         res.status(400).json({ error: error.message });
@@ -84,6 +88,9 @@ router.put('/projects/:id', async (req, res) => {
             req,
         });
 
+        // Trigger Webhook
+        triggerWebhook(req.tenantId, 'project.updated', project);
+
         res.json({ tenant: req.tenantId, data: project });
     } catch (error) {
         res.status(400).json({ error: error.message });
@@ -102,6 +109,9 @@ router.delete('/projects/:id', async (req, res) => {
             userId: req.tenantContext?.userId,
             req,
         });
+
+        // Trigger Webhook
+        triggerWebhook(req.tenantId, 'project.deleted', { id: req.params.id });
 
         res.json({ tenant: req.tenantId, message: 'Project deleted successfully' });
     } catch (error) {
@@ -134,6 +144,9 @@ router.post('/tasks', checkLimit('tasks'), async (req, res) => {
             req,
         });
 
+        // Trigger Webhook
+        triggerWebhook(req.tenantId, 'task.created', task);
+
         res.status(201).json({ tenant: req.tenantId, data: task });
     } catch (error) {
         res.status(400).json({ error: error.message });
@@ -152,6 +165,11 @@ router.put('/tasks/:id', async (req, res) => {
             userId: req.tenantContext?.userId,
             req,
         });
+
+        // Trigger Webhook: task.completed if status changed to 'done'
+        if (task.status === 'done' || task.status === 'completed') {
+            triggerWebhook(req.tenantId, 'task.completed', task);
+        }
 
         res.json({ tenant: req.tenantId, data: task });
     } catch (error) {

@@ -24,6 +24,10 @@ const tenantSchema = new mongoose.Schema({
     settings: {
         maxUsers: { type: Number, default: 5 },
         features: [String]
+    },
+    ipAllowlist: {
+        type: [String],
+        default: []
     }
 }, {
     timestamps: true

@@ -101,14 +101,13 @@ function Projects({ tenantId }) {
             console.error('Error saving project:', error)
             // Check if this is a tier limit error (403 from tierGuard)
             if (error.message && error.message.includes('Tier limit reached')) {
-                // Parse the structured error if possible
                 try {
-                    const parsed = JSON.parse(error.message)
-                    setTierError(parsed.upgradeMessage || error.message)
-                } catch (_) {
-                    setTierError(error.message)
+                    const parsed = JSON.parse(error.message);
+                    setTierError(parsed.upgradeMessage || 'Tier limit reached. Please upgrade your plan.');
+                } catch {
+                    setTierError('Tier limit reached. Please upgrade your plan.');
                 }
-                setShowModal(false)
+                setShowModal(false);
             } else if (error.upgradeMessage) {
                 setTierError(error.upgradeMessage)
                 setShowModal(false)

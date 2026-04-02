@@ -34,6 +34,9 @@ const MODEL_MAP = {
  * Get tenant tier — checks Redis cache first (60s TTL), then MongoDB.
  */
 async function getTenantTier(tenantId) {
+    // Superadmin ('system') always has unlimited enterprise access
+    if (tenantId === 'system') return 'enterprise';
+
     const cacheKey = `tier_cache:${tenantId}`;
     try {
         const redis = getRedisClient();
