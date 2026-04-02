@@ -1,114 +1,107 @@
-# 🚀 Mini-Project: Multi-Tenant Backend Service
+# 🚀 SkyGate | Enterprise Multi-Tenant SaaS Platform
 
-A production-grade Node.js backend for a Multi-tenant SaaS application, featuring robust data isolation, comprehensive security audits, and high-performance rate limiting.
+A high-performance, production-grade **Multi-Tenant SaaS architecture** built with Node.js, Express, and MongoDB. SkyGate provides ultimate data isolation, network-level security, and a robust billing tier system for scalable enterprise applications.
 
 ---
 
-## 📁 Project Structure
+## 📁 Repository Structure
 
 ```text
-server/
-├── src/
-│   ├── app.js              # Express application entry point
-│   ├── config/             # DB & Redis configurations
-│   ├── middleware/         # Auth, Tenant, and Rate Limit logic
-│   ├── models/             # Mongoose schemas with tenant isolation
-│   ├── routes/             # API endpoint definitions
-│   ├── services/           # Business logic & background tasks
-│   └── utils/              # Encryption, Context, & Log helpers
-├── tests/                  # Integration & Unit test suites
-├── .env.example            # Environment configuration template
-├── package.json            # Server dependencies & scripts
-└── README.md               # This documentation
+/ (root)
+├── server/                 # Full Backend Service (Git Tracked)
+│   ├── src/
+│   │   ├── middleware/     # tierGuard, ipGuard, rateLimiter, auth
+│   │   ├── models/         # Tenant, Webhook, User, Project, Task
+│   │   ├── routes/         # auth, api, admin, webhooks
+│   │   ├── services/       # webhookService, tenantAwareService
+│   │   └── utils/          # tenantContext, auditLogger
+│   └── app.js              # Server entry point
+├── client/                 # React Frontend (Local Management)
+└── README.md               # You are here
 ```
 
 ---
 
-## 🔐 Key Features
+## 🔐 Advanced Features
 
-### 🏢 Multi-Tenancy & Isolation
-- **Strict Data Isolation**: Uses `TenantContext` to ensure one tenant's request can never access another tenant's data.
-- **Dynamic Database Routing**: Supports both shared database collections and dedicated tenant databases.
-- **Tenant Resolver**: Automatically identifies tenants via JWT claims or Custom Headers.
+### 🏢 Multi-Tenancy & Strict Isolation
+- **Context-Aware Routing**: Uses `TenantContext` to ensure one organization's data never leaks to another.
+- **Dynamic Scoping**: Automatically scopes every database query to the authenticated `tenant_id`.
 
-### 🛡️ Advanced Security
-- **JWT Authentication**: Secure token-based access with refresh token rotation.
-- **Bcrypt Hashing**: Industry-standard password hashing for all user accounts.
-- **Tiered Permissions**: Built-in RBAC (Admin, User, Viewer, Superadmin).
-- **Data Encryption**: Field-level encryption for sensitive tenant information.
+### 💳 Tiered Billing System (Phase 2)
+- **Granular Resource Limits**: Enforces hard limits based on the organization's plan:
+  - **Free**: 3 Projects, 5 Users, 10 Tasks.
+  - **Premium**: 20 Projects, 25 Users, 200 Tasks.
+  - **Enterprise**: **Unlimited** access to all resources.
+- **Immediate Enforcement**: Includes Redis-backed cache-busting for real-time tier upgrades.
 
-### 📈 Performance & Monitoring
-- **Redis Rate Limiting**: Intelligent rate limiting with tiers (Free, Premium, Enterprise).
-- **Audit Logging**: Comprehensive trace of every "Create, Update, Delete" action across all tenants.
-- **Health Monitoring**: Detailed dependency checks for MongoDB, Redis, and overall system uptime.
-- **Metrics Integration**: Prometheus-ready metrics endpoint for real-time monitoring.
+### 📡 Real-time Webhooks (Phase 3)
+- **Event-Driven Integration**: Trigger external notifications for `project.created`, `task.completed`, and `tier.upgraded`.
+- **HMAC Signing**: All signatures use `SHA-256` HMAC to verify payload integrity.
+- **Auto-Disable**: Intelligent system that pauses webhook endpoints after 5 consecutive failures.
+
+### 🛡️ Network-Level Security (Phase 3)
+- **IP Allowlisting**: Organizations can restrict dashboard access to specific trusted IP addresses.
+- **Superadmin Guard**: Dedicated "System" tenant with root access, immune to accidental IP lockouts.
 
 ---
 
 ## 🚀 Quick Start
 
-### Prerequisites
-- **Node.js** >= 18.0.0
-- **MongoDB** (Local or Atlas)
-- **Redis** (Optional, for rate limiting and caching)
-
 ### Installation
-1. **Clone and Install**:
-   ```bash
-   npm install
-   ```
+```bash
+# Install root dependencies
+npm install
 
-2. **Environment Setup**:
-   - Copy `.env.example` to `.env`
-   - Update `MONGODB_URI` and `JWT_SECRET`.
-   ```bash
-   MONGODB_URI=mongodb://127.0.0.1:27017/multi_tenant
-   ```
+# Install server dependencies
+cd server && npm install
+```
 
-3. **Start the Service**:
-   ```bash
-   # Development mode (with nodemon)
-   npm run dev
+### Environment Setup
+Create a `.env` in the `server/` directory:
+```env
+MONGODB_URI=mongodb://127.0.0.1:27017/sky_gate
+PORT=3000
+JWT_SECRET=your_jwt_secret_key
+ADMIN_PASSWORD=admin123
+SUPERADMIN_PASSWORD=super123
+```
 
-   # Production mode
-   npm start
-   ```
+### Running the App
+```bash
+# Run both client and server concurrently (from root)
+npm run dev
+```
 
 ---
 
-## 📡 API Endpoints
+## 📡 API Reference
 
-### Health & Monitoring
-- `GET /health` - Basic health check
-- `GET /health/detailed` - Detailed status of MongoDB & Redis
-- `GET /metrics/json` - System metrics in JSON format
+### Tenant API (Requires JWT)
+- `GET /api/projects` - List organization projects
+- `POST /api/webhooks` - Register a new integration endpoint
+- `GET /api/rate-limit/status` - Check current tier & usage stats
 
-### Authentication
-- `POST /auth/register` - Initialize a new Workspace (Tenant + Admin User)
-- `POST /auth/token` - Authenticate and receive JWT + Refresh Token
-- `POST /auth/logout` - Invalidate session
-
-### Tenant API (Requires Auth)
-- `GET /api/projects` - View all projects in your isolation zone
-- `POST /api/projects` - Create a new project for your organization
-- `GET /api/rate-limit/status` - Check your current tier usage
+### Admin API (Superadmin Only)
+- `GET /admin/tenants` - Summary of all system organizations
+- `PATCH /admin/tenants/:id/tier` - Upgrade/Downgrade an organization
+- `POST /admin/tenants/:id/ip-allowlist` - Restrict organization access by IP
 
 ---
 
 ## 🧪 Testing
 
-Run the full battery of tests to verify isolation and security:
+SkyGate includes a comprehensive security and isolation test suite:
 ```bash
-# Run all tests
-npm test
+# Run all backend tests
+npm run test:server
 
-# Run isolation-specific tests
+# Run specific isolation tests
 npm run test:isolation
 ```
 
 ---
 
 ## 📄 License
-ISC
-
+ISC  
 **Last Updated**: April 2026
