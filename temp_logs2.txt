@@ -1,0 +1,9 @@
+◇ injecting env (0) from .env // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+✓ MongoDB connected
+⚠ Redis connection failed (rate limiting fallback mode active): Stream isn't writeable and enableOfflineQueue options is false
+✓ Redis connected
+✓ Seeded demo admin for tenant-a
+✓ Seeded demo admin for tenant-b
+✓ Seeded demo admin for tenant-c
+✓ Seeded superadmin user (tenant: system)
+✓ Multi-tenant server running on port 3000
