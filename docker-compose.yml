@@ -1,0 +1,80 @@
+version: '3.8'
+
+services:
+  # Frontend React (Vite) app
+  client:
+    build: 
+      context: ./client
+      dockerfile: Dockerfile
+    container_name: multi-tenant-client
+    ports:
+      - "5173:80"
+    restart: unless-stopped
+    depends_on:
+      - server
+    networks:
+      - multi-tenant-network
+
+  # Backend Express API
+  server:
+    build: 
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: multi-tenant-server
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - MONGODB_URI=mongodb://mongodb:27017/multi_tenant
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    env_file:
+      - .env  # Pull root env file if it exists
+    depends_on:
+      - mongodb
+      - redis
+    volumes:
+      - ./server/backups:/app/backups
+      - ./server/logs:/app/logs
+    restart: unless-stopped
+    networks:
+      - multi-tenant-network
+
+  # MongoDB database
+  mongodb:
+    image: mongo:7.0
+    container_name: multi-tenant-mongodb
+    ports:
+      - "27017:27017"
+    environment:
+      - MONGO_INITDB_DATABASE=multi_tenant
+    volumes:
+      - mongodb-data:/data/db
+      - mongodb-config:/data/configdb
+    restart: unless-stopped
+    networks:
+      - multi-tenant-network
+    command: mongod
+
+  # Redis cache
+  redis:
+    image: redis:7-alpine
+    container_name: multi-tenant-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+    networks:
+      - multi-tenant-network
+    command: redis-server --appendonly yes
+
+volumes:
+  mongodb-data:
+  mongodb-config:
+  redis-data:
+
+networks:
+  multi-tenant-network:
+    driver: bridge
