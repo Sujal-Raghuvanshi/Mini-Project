@@ -61,12 +61,19 @@ router.post('/register', async (req, res) => {
         }, true);
         
         const refreshToken = crypto.randomBytes(40).toString('hex');
-        const redis = getRedisClient();
-        await redis.setex(`refresh:${refreshToken}`, 7 * 24 * 60 * 60, JSON.stringify({
-            tenantId,
-            userId: adminEmail,
-            role: 'admin'
-        }));
+        // Optional Redis refresh token storage
+        try {
+            const redis = getRedisClient();
+            if (redis && redis.status === 'ready') {
+                await redis.setex(`refresh:${refreshToken}`, 7 * 24 * 60 * 60, JSON.stringify({
+                    tenantId,
+                    userId: adminEmail,
+                    role: 'admin'
+                }));
+            }
+        } catch (e) {
+            console.warn('[TENANT] Failed to cache refresh token:', e.message);
+        }
 
         res.status(201).json({ 
             message: 'Tenant and Admin created successfully',

@@ -46,13 +46,19 @@ router.post('/token', async (req, res) => {
         
         const refreshToken = generateRefreshToken();
 
-        // Save refresh token to Redis with 7-day TTL
-        const redis = getRedisClient();
-        await redis.setex(`refresh:${refreshToken}`, 7 * 24 * 60 * 60, JSON.stringify({
-            tenantId,
-            userId: user.username,
-            role: user.role
-        }));
+        // Save refresh token to Redis with 7-day TTL if available
+        try {
+            const redis = getRedisClient();
+            if (redis && redis.status === 'ready') {
+                await redis.setex(`refresh:${refreshToken}`, 7 * 24 * 60 * 60, JSON.stringify({
+                    tenantId,
+                    userId: user.username,
+                    role: user.role
+                }));
+            }
+        } catch (redisError) {
+            console.warn('[AUTH] Failed to save refresh token to Redis:', redisError.message);
+        }
 
         res.json({
             token,
@@ -83,12 +89,27 @@ router.post('/refresh', async (req, res) => {
         const { tenantId, userId, role } = JSON.parse(storedData);
         
         // Invalidate old token
-        await redis.del(`refresh:${refreshToken}`);
+        try {
+            const redis = getRedisClient();
+            if (redis && redis.status === 'ready') {
+                await redis.del(`refresh:${refreshToken}`);
+            }
+        } catch (e) { /* ignore deletion failure */ }
 
         // Rotate
         const token = TenantResolver.createToken({ tenantId, userId, username: userId, role }, true);
         const newRefreshToken = generateRefreshToken();
-        await redis.setex(`refresh:${newRefreshToken}`, 7 * 24 * 60 * 60, JSON.stringify({ tenantId, userId, role }));
+        
+        try {
+            const redis = getRedisClient();
+            if (redis && redis.status === 'ready') {
+                await redis.setex(`refresh:${newRefreshToken}`, 7 * 24 * 60 * 60, JSON.stringify({ tenantId, userId, role }));
+            }
+        } catch (redisError) {
+            console.warn('[AUTH] Failed to rotate refresh token in Redis:', redisError.message);
+            // If Redis exists but fails during rotation, we might want to fail the refresh
+            // But since Redis is "optional", we'll return the token anyway (it just won't be rotatable again)
+        }
 
         res.json({ token, refreshToken: newRefreshToken, expiresIn: '15m' });
     } catch (error) {
@@ -160,8 +181,12 @@ router.post('/logout', async (req, res) => {
     try {
         const { refreshToken } = req.body;
         if (refreshToken) {
-            const redis = getRedisClient();
-            await redis.del(`refresh:${refreshToken}`);
+            try {
+                const redis = getRedisClient();
+                if (redis && redis.status === 'ready') {
+                    await redis.del(`refresh:${refreshToken}`);
+                }
+            } catch (e) { /* ignore */ }
         }
         res.json({ message: 'Logged out successfully' });
     } catch (error) {

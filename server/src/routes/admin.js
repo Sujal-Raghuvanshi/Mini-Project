@@ -60,6 +60,9 @@ router.get('/tenants/:tenantId/stats', async (req, res) => {
     try {
         const { tenantId } = req.params;
 
+        const tenant = await Tenant.findOne({ tenantId }).lean();
+        if (!tenant) return res.status(404).json({ error: 'Tenant not found' });
+
         let userCount = 0, projectCount = 0, taskCount = 0, auditLogCount = 0;
 
         await TenantContext.run(tenantId, async () => {
@@ -74,7 +77,14 @@ router.get('/tenants/:tenantId/stats', async (req, res) => {
             auditLogCount = await AuditLog.countDocuments({ tenant_id: tenantId });
         });
 
-        res.json({ tenantId, userCount, projectCount, taskCount, auditLogCount });
+        res.json({ 
+            tenantId, 
+            tier: tenant.plan || 'free',
+            userCount, 
+            projectCount, 
+            taskCount, 
+            auditLogCount 
+        });
     } catch (error) {
         console.error('[ADMIN] GET /tenants/:tenantId/stats error:', error);
         res.status(500).json({ error: error.message });
@@ -214,6 +224,54 @@ router.delete('/tenants/:tenantId/ip-allowlist/:ip', async (req, res) => {
 
         res.json({ message: 'IP removed from allowlist', ips: tenant.ipAllowlist });
     } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// ---------------------------------------------------------------------------
+// DELETE /admin/tenants/:tenantId
+// Permanently deletes a tenant and all their associated resources.
+// ---------------------------------------------------------------------------
+router.delete('/tenants/:tenantId', async (req, res) => {
+    try {
+        const { tenantId } = req.params;
+
+        if (tenantId === 'system') {
+            return res.status(422).json({ error: 'Critical system architecture constraint: The "system" superadmin tenant cannot be deleted. This action would destroy the platform controls.' });
+        }
+
+        // 1. Check if tenant actually exists
+        const existingTenant = await Tenant.findOne({ tenantId });
+        if (!existingTenant) return res.status(404).json({ error: 'Tenant not found' });
+
+        // 2. Clear out all isolated scope data safely
+        await TenantContext.run(tenantId, async () => {
+            const UserModel = await modelProvider.getModel('User');
+            const ProjectModel = await modelProvider.getModel('Project');
+            const TaskModel = await modelProvider.getModel('Task');
+            const AuditLog = require('../models/AuditLog');
+
+            await UserModel.deleteMany({ tenant_id: tenantId });
+            await ProjectModel.deleteMany({ tenant_id: tenantId });
+            await TaskModel.deleteMany({ tenant_id: tenantId });
+            await AuditLog.deleteMany({ tenant_id: tenantId });
+        });
+
+        // 3. Delete from the master registry
+        await Tenant.deleteOne({ tenantId });
+
+        // 4. Force cache eviction
+        try {
+            const redis = getRedisClient();
+            if (redis && redis.status === 'ready') {
+                await redis.del(`tier_cache:${tenantId}`);
+                await redis.del(`ip_allowlist:${tenantId}`);
+            }
+        } catch (_) { /* Best effort */ }
+
+        res.json({ message: `Tenant ${tenantId} and all associated data have been permanently deleted.` });
+    } catch (error) {
+        console.error('[ADMIN] DELETE /tenants/:tenantId error:', error);
         res.status(500).json({ error: error.message });
     }
 });
