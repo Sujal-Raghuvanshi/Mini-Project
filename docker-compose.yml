@@ -1,9 +1,9 @@
-version: '3.8'
+# version: '3.8'
 
 services:
   # Frontend React (Vite) app
   client:
-    build: 
+    build:
       context: ./client
       dockerfile: Dockerfile
     container_name: multi-tenant-client
@@ -17,7 +17,7 @@ services:
 
   # Backend Express API
   server:
-    build: 
+    build:
       context: ./server
       dockerfile: Dockerfile
     container_name: multi-tenant-server
@@ -30,7 +30,7 @@ services:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
     env_file:
-      - .env  # Pull root env file if it exists
+      - .env # Pull root env file if it exists
     depends_on:
       - mongodb
       - redis
@@ -74,6 +74,7 @@ volumes:
   mongodb-data:
   mongodb-config:
   redis-data:
+
 
 networks:
   multi-tenant-network:
