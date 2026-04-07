@@ -1,5 +1,4 @@
 const express = require('express');
-const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const { TenantContext } = require('../utils/tenantContext');
@@ -11,48 +10,45 @@ const modelProvider = require('../utils/modelProvider');
 const router = express.Router();
 
 router.post('/register', async (req, res) => {
-    const session = await mongoose.startSession();
-    session.startTransaction();
-
     try {
         const { tenantId, tenantName, adminEmail, adminPassword } = req.body;
 
         if (!tenantId || !tenantName || !adminEmail || !adminPassword) {
-            throw new Error('Missing required fields');
+            return res.status(400).json({ error: 'Missing required fields' });
         }
 
-        const existingTenant = await Tenant.findOne({ tenantId }).session(session);
+        // Check for duplicate tenant
+        const existingTenant = await Tenant.findOne({ tenantId });
         if (existingTenant) {
-            throw new Error('Tenant ID already exists');
+            return res.status(400).json({ error: 'Tenant ID already exists' });
         }
 
-        await Tenant.create([{ 
-            tenantId: tenantId,
+        // Create the tenant record
+        await Tenant.create({ 
+            tenantId,
             name: tenantName, 
             plan: 'free' 
-        }], { session });
+        });
 
-        // CRITICAL FIX 2: Hash password with bcrypt before saving
+        // Hash password before saving
         const hashedPassword = await bcrypt.hash(adminPassword, 12);
 
+        // Create the admin user in tenant context
         await TenantContext.run(tenantId, async () => {
             const UserModel = await modelProvider.getModel('User');
             
-            const existingUser = await UserModel.findOne({ username: adminEmail }).session(session);
+            const existingUser = await UserModel.findOne({ username: adminEmail });
             if (existingUser) throw new Error('Admin Email already in use');
 
-            await UserModel.create([{
+            await UserModel.create({
                 username: adminEmail,
-                password: hashedPassword, // Store hashed, never plaintext
+                password: hashedPassword,
                 role: 'admin',
                 tenant_id: tenantId
-            }], { session });
+            });
         });
 
-        await session.commitTransaction();
-        session.endSession();
-
-        // Output JWT Token immediately
+        // Issue JWT token immediately
         const token = TenantResolver.createToken({
             tenantId,
             userId: adminEmail,
@@ -84,8 +80,7 @@ router.post('/register', async (req, res) => {
         });
 
     } catch (error) {
-        await session.abortTransaction();
-        session.endSession();
+        console.error('[TENANT] Registration failed:', error.message);
         res.status(400).json({ error: error.message });
     }
 });

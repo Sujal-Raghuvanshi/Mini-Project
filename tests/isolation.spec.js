@@ -1,6 +1,6 @@
 const { test, expect } = require('@playwright/test');
 
-const API_BASE = 'http://localhost:3000';
+const API_BASE = 'http://127.0.0.1:3000';
 
 test.describe('E2E Data Isolation Guarantee', () => {
 
@@ -22,6 +22,7 @@ test.describe('E2E Data Isolation Guarantee', () => {
       }
     });
     expect(resA.status()).toBe(201);
+
     const dataA = await resA.json();
     const tokenA = dataA.token;
     
