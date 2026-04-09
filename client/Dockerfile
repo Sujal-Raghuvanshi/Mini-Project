@@ -1,3 +1,4 @@
+# Maintenance update: 2026-04-09
 # Build stage
 FROM node:18-alpine AS build
 WORKDIR /app
