@@ -271,4 +271,8 @@ router.delete('/tenant', async (req, res) => {
     }
 });
 
+// Sub-routes
+router.use('/invitations', require('./invitations'));
+router.use('/billing', require('./billing'));
+
 module.exports = router;

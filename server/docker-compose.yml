@@ -7,15 +7,13 @@ services:
     container_name: multi-tenant-app
     ports:
       - "3000:3000"
+    env_file:
+      - .env
     environment:
       - NODE_ENV=production
       - PORT=3000
-      - MONGODB_URI=mongodb://mongodb:27017/multi_tenant
       - REDIS_HOST=redis
       - REDIS_PORT=6379
-      - JWT_SECRET=${JWT_SECRET}
-      - ENCRYPTION_SECRET=${ENCRYPTION_SECRET}
-      - BACKUP_ENCRYPTION_KEY=${BACKUP_ENCRYPTION_KEY}
     depends_on:
       - mongodb
       - redis

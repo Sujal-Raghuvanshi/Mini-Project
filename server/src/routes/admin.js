@@ -276,4 +276,75 @@ router.delete('/tenants/:tenantId', async (req, res) => {
     }
 });
 
+// ---------------------------------------------------------------------------
+// UPGRADE REQUESTS MANAGEMENT
+// ---------------------------------------------------------------------------
+
+// GET /admin/upgrade-requests
+router.get('/upgrade-requests', async (req, res) => {
+    try {
+        const UpgradeRequest = require('../models/UpgradeRequest');
+        const requests = await UpgradeRequest.find({ status: 'pending' }).lean();
+        res.json({ count: requests.length, data: requests });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// POST /admin/upgrade-requests/:id/approve
+router.post('/upgrade-requests/:id/approve', async (req, res) => {
+    try {
+        const UpgradeRequest = require('../models/UpgradeRequest');
+        const request = await UpgradeRequest.findOneAndUpdate(
+            { _id: req.params.id, status: 'pending' }, 
+            { status: 'approved' }, 
+            { new: true }
+        );
+        if (!request) return res.status(404).json({ error: 'Request not found or already processed' });
+        
+        // Upgrade tenant
+        const tenantId = request.tenantId;
+        const tier = request.requestedPlan;
+        
+        const existingTenant = await Tenant.findOne({ tenantId });
+        const oldTier = existingTenant ? existingTenant.plan : 'free';
+
+        const tenant = await Tenant.findOneAndUpdate(
+            { tenantId },
+            { $set: { plan: tier } },
+            { new: true }
+        );
+
+        if (tenant) {
+            // Bust Redis cache
+            try {
+                const redis = getRedisClient();
+                if (redis && redis.status === 'ready') await redis.del(`tier_cache:${tenantId}`);
+            } catch (_) {}
+
+            triggerWebhook(tenantId, 'tier.upgraded', { oldTier, newTier: tier });
+        }
+        
+        res.json({ message: 'Request approved successfully', request, tenant });
+    } catch(err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// POST /admin/upgrade-requests/:id/reject
+router.post('/upgrade-requests/:id/reject', async (req, res) => {
+    try {
+        const UpgradeRequest = require('../models/UpgradeRequest');
+        const request = await UpgradeRequest.findOneAndUpdate(
+            { _id: req.params.id, status: 'pending' }, 
+            { status: 'rejected' }, 
+            { new: true }
+        );
+        if (!request) return res.status(404).json({ error: 'Request not found or already processed' });
+        res.json({ message: 'Request rejected', request });
+    } catch(err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 module.exports = router;

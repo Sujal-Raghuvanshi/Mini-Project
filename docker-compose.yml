@@ -26,7 +26,6 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=3000
-      - MONGODB_URI=mongodb://mongodb:27017/multi_tenant
       - REDIS_HOST=redis
       - REDIS_PORT=6379
     env_file:

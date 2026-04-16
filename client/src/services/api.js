@@ -216,6 +216,62 @@ export const tenantAPI = {
     },
 }
 
+// Invitations API
+export const invitationsAPI = {
+    getAll: async () => {
+        return apiRequest('/api/invitations')
+    },
+    invite: async (data) => {
+        return apiRequest('/api/invitations', {
+            method: 'POST',
+            body: JSON.stringify(data),
+        })
+    },
+    accept: async (id) => {
+        return apiRequest(`/api/invitations/${id}/accept`, {
+            method: 'PATCH',
+        })
+    },
+    revoke: async (id) => {
+        return apiRequest(`/api/invitations/${id}`, {
+            method: 'DELETE',
+        })
+    },
+}
+
+// Billing API
+export const billingAPI = {
+    getPlans: async () => {
+        return apiRequest('/api/billing/plans')
+    },
+    upgrade: async (planData) => {
+        return apiRequest('/api/billing/upgrade', {
+            method: 'POST',
+            body: JSON.stringify(planData),
+        })
+    },
+}
+
+// Admin API
+export const adminAPI = {
+    getTenants: async () => {
+        return apiRequest('/admin/tenants')
+    },
+    getUpgradeRequests: async () => {
+        return apiRequest('/admin/upgrade-requests')
+    },
+    approveUpgrade: async (id) => {
+        return apiRequest(`/admin/upgrade-requests/${id}/approve`, {
+            method: 'POST'
+        })
+    },
+    rejectUpgrade: async (id) => {
+        return apiRequest(`/admin/upgrade-requests/${id}/reject`, {
+            method: 'POST'
+        })
+    }
+}
+
 export default {
     setAuthToken,
     getAuthToken,
@@ -227,4 +283,7 @@ export default {
     auditLogs: auditLogsAPI,
     rateLimit: rateLimitAPI,
     tenants: tenantAPI,
+    invitations: invitationsAPI,
+    billing: billingAPI,
+    admin: adminAPI,
 }
