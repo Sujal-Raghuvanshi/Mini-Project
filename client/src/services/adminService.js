@@ -87,3 +87,13 @@ export const addIpToAllowlist = (tenantId, ip) =>
 /** DELETE /admin/tenants/:tenantId/ip-allowlist/:ip */
 export const removeIpFromAllowlist = (tenantId, ip) =>
     adminRequest(`/admin/tenants/${tenantId}/ip-allowlist/${ip}`, { method: 'DELETE' })
+
+// --- UPGRADE REQUESTS (Admin Scoped) ---
+/** GET /admin/upgrade-requests */
+export const getUpgradeRequests = () => adminRequest(`/admin/upgrade-requests`)
+
+/** POST /admin/upgrade-requests/:id/approve */
+export const approveUpgrade = (id) => adminRequest(`/admin/upgrade-requests/${id}/approve`, { method: 'POST' })
+
+/** POST /admin/upgrade-requests/:id/reject */
+export const rejectUpgrade = (id) => adminRequest(`/admin/upgrade-requests/${id}/reject`, { method: 'POST' })

@@ -9,6 +9,8 @@ import Sidebar from './components/Sidebar'
 import WebhookManager from './components/WebhookManager'
 import Settings from './components/Settings'
 import AdminDashboard from './components/AdminDashboard'
+import TeamMembers from './components/TeamMembers'
+import Billing from './components/Billing'
 import api from './services/api'
 
 function App() {
@@ -108,6 +110,8 @@ function App() {
         {currentView === 'webhooks' && <WebhookManager tenantId={tenantId} />}
         {currentView === 'audit' && <AuditLogs tenantId={tenantId} />}
         {currentView === 'monitoring' && <Monitoring tenantId={tenantId} />}
+        {currentView === 'team' && <TeamMembers tenantId={tenantId} />}
+        {currentView === 'billing' && <Billing tenantId={tenantId} />}
         {currentView === 'settings' && <Settings tenantId={tenantId} onLogout={handleLogout} />}
         {currentView === 'admin' && <AdminDashboard tenantId={tenantId} />}
       </main>

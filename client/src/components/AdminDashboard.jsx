@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import Monitoring from './Monitoring'
 import AuditLogs from './AuditLogs'
-import { getAllTenants, getTenantStats, updateTenantTier, deleteTenant, getIpAllowlist, addIpToAllowlist, removeIpFromAllowlist, getWebhooks } from '../services/adminService'
+import { getAllTenants, getTenantStats, updateTenantTier, deleteTenant, getIpAllowlist, addIpToAllowlist, removeIpFromAllowlist, getUpgradeRequests, approveUpgrade, rejectUpgrade } from '../services/adminService'
 
 const TIER_STYLES = {
     free:       { label: 'FREE',       bg: '#3a3a4a', color: '#a0a0b0' },
@@ -411,6 +411,107 @@ function TenantDetailTab({ tenants }) {
     )
 }
 
+// ── TAB 5: Requests ──────────────────────────────────────────────────────────
+function RequestsTab() {
+    const [requests, setRequests] = useState([])
+    const [loading, setLoading] = useState(true)
+    const [actionLoading, setActionLoading] = useState(null)
+
+    const fetchRequests = useCallback(async () => {
+        setLoading(true)
+        try {
+            const res = await getUpgradeRequests()
+            setRequests(res.data || [])
+        } catch (err) {
+            alert('Failed to fetch requests: ' + err.message)
+        } finally {
+            setLoading(false)
+        }
+    }, [])
+
+    useEffect(() => {
+        fetchRequests()
+    }, [fetchRequests])
+
+    const handleApprove = async (id) => {
+        setActionLoading(id)
+        try {
+            await approveUpgrade(id)
+            alert('Request approved successfully!')
+            fetchRequests()
+        } catch (err) {
+            alert('Error: ' + err.message)
+        } finally {
+            setActionLoading(null)
+        }
+    }
+
+    const handleReject = async (id) => {
+        if (!window.confirm('Are you sure you want to reject this request?')) return;
+        setActionLoading(id)
+        try {
+            await rejectUpgrade(id)
+            fetchRequests()
+        } catch (err) {
+            alert('Error: ' + err.message)
+        } finally {
+            setActionLoading(null)
+        }
+    }
+
+    if (loading) return <div style={{ color: 'var(--text-secondary)', padding: '40px', textAlign: 'center' }}>Loading requests…</div>
+
+    return (
+        <div style={{ background: 'var(--bg-card)', padding: '24px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+            <h3 style={{ marginBottom: '1.5rem', color: '#fff' }}>📋 Pending Upgrade Requests</h3>
+            
+            {requests.length === 0 ? (
+                <div style={{ padding: '2rem', textAlign: 'center', color: '#64748b' }}>No pending requests.</div>
+            ) : (
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.87rem' }}>
+                    <thead>
+                        <tr style={{ color: '#94a3b8', textAlign: 'left', borderBottom: '1px solid #2a2a3e' }}>
+                            <th style={{ padding: '12px 8px' }}>Tenant ID</th>
+                            <th style={{ padding: '12px 8px' }}>Requested Plan</th>
+                            <th style={{ padding: '12px 8px' }}>Billing Cycle</th>
+                            <th style={{ padding: '12px 8px' }}>Requested By</th>
+                            <th style={{ padding: '12px 8px', textAlign: 'right' }}>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {requests.map(req => (
+                            <tr key={req._id} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
+                                <td style={{ padding: '12px 8px', fontFamily: 'monospace', fontWeight: 600 }}>{req.tenantId}</td>
+                                <td style={{ padding: '12px 8px' }}><TierBadge tier={req.requestedPlan} /></td>
+                                <td style={{ padding: '12px 8px', textTransform: 'capitalize' }}>{req.billingCycle}</td>
+                                <td style={{ padding: '12px 8px' }}>{req.requestedBy}</td>
+                                <td style={{ padding: '12px 8px', textAlign: 'right' }}>
+                                    <button 
+                                        className="btn-secondary" 
+                                        disabled={actionLoading === req._id}
+                                        onClick={() => handleApprove(req._id)}
+                                        style={{ marginRight: '8px', background: 'rgba(52,211,153,0.1)', color: '#34d399', border: '1px solid #34d399', padding: '4px 12px' }}
+                                    >
+                                        {actionLoading === req._id ? '...' : 'Approve'}
+                                    </button>
+                                    <button 
+                                        className="btn-secondary" 
+                                        disabled={actionLoading === req._id}
+                                        onClick={() => handleReject(req._id)}
+                                        style={{ background: 'transparent', color: '#f87171', border: '1px solid #f87171', padding: '4px 12px' }}
+                                    >
+                                        Reject
+                                    </button>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            )}
+        </div>
+    )
+}
+
 // ── MAIN AdminDashboard ───────────────────────────────────────────────────────
 function AdminDashboard({ tenantId }) {
     const [activeTab, setActiveTab] = useState('overview')
@@ -428,6 +529,7 @@ function AdminDashboard({ tenantId }) {
 
     const TABS = [
         { id: 'overview', icon: '📊', label: 'Overview' },
+        { id: 'requests', icon: '📨', label: 'Requests' },
         { id: 'detail',   icon: '🔍', label: 'Tenant Detail' },
         { id: 'security', icon: '🛡️', label: 'Security' },
         { id: 'system',   icon: '🖥️', label: 'System' },
@@ -474,6 +576,7 @@ function AdminDashboard({ tenantId }) {
             {/* Tab Content */}
             <div>
                 {activeTab === 'overview' && <OverviewTab tenants={tenants} loading={loading} error={error} />}
+                {activeTab === 'requests' && <RequestsTab />}
                 {activeTab === 'detail'   && <TenantDetailTab tenants={tenants} />}
                 {activeTab === 'security' && <SecurityTab tenants={tenants} />}
                 {activeTab === 'system'   && (

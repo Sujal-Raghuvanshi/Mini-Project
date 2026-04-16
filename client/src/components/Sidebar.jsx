@@ -4,6 +4,10 @@ function Sidebar({ currentView, setCurrentView, tenantId, userId, userRole, onLo
     const menuItems = [
         { id: 'dashboard', icon: '📊', label: 'Dashboard' },
         { id: 'projects', icon: '🛡️', label: 'Workspaces' },
+        ...(userRole !== 'superadmin' ? [
+            { id: 'team', icon: '👥', label: 'Team' },
+            { id: 'billing', icon: '💳', label: 'Billing' },
+        ] : []),
         { id: 'audit', icon: '📋', label: 'Audit Logs' },
         { id: 'monitoring', icon: '📈', label: 'Monitoring' },
         { id: 'settings', icon: '⚙️', label: 'Settings' },
